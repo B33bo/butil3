@@ -82,6 +82,6 @@ namespace b33bo.meta
     public static class butil
     {
         /// <summary>The current version of Butil</summary>
-        public static float version = 3.0f;
+        public static float version = 3.01f;
     }
 }
