@@ -15,6 +15,7 @@ namespace Btools.Components
         private List<UIScrollContent> items = new List<UIScrollContent>();
 
         private UnityEngine.UI.ScrollRect scrollRect;
+        private bool ReloadNextFrame;
 
         public UIScrollContent this[int index]
         {
@@ -63,6 +64,14 @@ namespace Btools.Components
         private void Awake()
         {
             scrollRect = GetComponent<UnityEngine.UI.ScrollRect>();
+        }
+
+        private void Update()
+        {
+            if (!ReloadNextFrame)
+                return;
+            ReloadNextFrame = false;
+            ForceReloadList();
         }
 
         public void Add(RectTransform rectTransform)
@@ -121,7 +130,10 @@ namespace Btools.Components
             ReadjustList();
         }
 
-        public void ReadjustList()
+        public void ReadjustList() =>
+            ReloadNextFrame = true;
+
+        public void ForceReloadList()
         {
             if (scrollRect is null)
                 scrollRect = GetComponent<UnityEngine.UI.ScrollRect>();

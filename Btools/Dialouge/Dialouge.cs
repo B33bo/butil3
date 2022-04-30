@@ -21,13 +21,14 @@ namespace Btools.DialougeSystem
 
         [SerializeField] private AudioClip BlipSound;
 
-        private static Dialouge instance;
+        public static Dialouge Instance { get; private set; }
 
         private static bool _Skip = false;
 
         private void Awake()
         {
-            instance = this;
+            Instance = this;
+            gameObject.SetActive(false);
         }
 
         private void Update()
@@ -44,7 +45,7 @@ namespace Btools.DialougeSystem
         /// <param name="responses">The possible responses, and what they do</param>
         public static void Say(string DisplayText, params Response[] responses)
         {
-            instance.SayInstance(DisplayText, responses);
+            Instance.SayInstance(DisplayText, responses);
         }
 
         /// <summary>Make the dialouge system say something</summary>
@@ -52,6 +53,7 @@ namespace Btools.DialougeSystem
         /// <param name="responses">The possible responses, and what they do</param>
         public void SayInstance(string DisplayText, params Response[] responses)
         {
+            gameObject.SetActive(true);
             /**Clearing old responses**/
             float start = bottomLeft.localPosition.x;
             float end = bottomRight.localPosition.x;

@@ -16,6 +16,14 @@ namespace Btools.DevConsole
             return propertyInfo.GetValue(target).ToString();
         }
 
+        public static string SetField(string[] Parameters, FieldInfo fieldInfo, object target)
+        {
+            if (Parameters.Length > 1)
+                fieldInfo.SetValue(target, Convert.ChangeType(Parameters[1], fieldInfo.FieldType));
+
+            return fieldInfo.GetValue(target).ToString();
+        }
+
         public static bool TryAdd(string CommandName, Func<string[], string> CommandAction)
         {
             CommandName = CommandName.ToLower();
@@ -23,6 +31,26 @@ namespace Btools.DevConsole
                 return false;
             Commands.Add(CommandName, CommandAction);
             return true;
+        }
+
+        public static bool TryAdd(string CommandName, PropertyInfo property, object target)
+        {
+            if (Commands.ContainsKey(CommandName))
+            {
+                Commands[CommandName] = x => SetProperty(x, property, target);
+                return true;
+            }
+            return TryAdd(CommandName, x => SetProperty(x, property, target));
+        }
+
+        public static bool TryAdd(string CommandName, FieldInfo property, object target)
+        {
+            if (Commands.ContainsKey(CommandName))
+            {
+                Commands[CommandName] = x => SetField(x, property, target);
+                return true;
+            }
+            return TryAdd(CommandName, x => SetField(x, property, target));
         }
 
         public static string AutoComplete(string unfinishedString)
@@ -35,9 +63,6 @@ namespace Btools.DevConsole
             }
             return unfinishedString;
         }
-
-        public static bool TryAdd(string CommandName, PropertyInfo property, object target) =>
-            TryAdd(CommandName, x => SetProperty(x, property, target));
 
         public static string Excecute(string CommandName, string[] Parameters)
         {

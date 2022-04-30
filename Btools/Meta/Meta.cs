@@ -28,7 +28,7 @@ namespace Btools.meta
             PrefabUtility.UnpackPrefabInstance(Selection.activeGameObject, PrefabUnpackMode.OutermostRoot, InteractionMode.AutomatedAction);
         }
 
-        [MenuItem("GameObject/UI/Slider2D - butil", priority = 2034)]
+        [MenuItem("GameObject/UI/Slider2D - butil", priority = 2033)]
         public static void Slider2D() =>
             LoadUI("Assets/Btools/Slider2D/Slider2D.prefab");
 
@@ -64,6 +64,12 @@ namespace Btools.meta
 
         [MenuItem("GameObject/UI/multi Tool - butil", priority = 3000)]
         public static void UImultiTool()
+        {
+            LoadUI("Assets/Btools/UImultiTool/UImultitool.prefab");
+        }
+
+        [MenuItem("GameObject/UI/UiContent Scroll View - butil", priority = 3000)]
+        public static void UiContentScrollView()
         {
             LoadUI("Assets/Btools/UImultiTool/UImultitool.prefab");
         }
