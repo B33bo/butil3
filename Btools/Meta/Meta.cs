@@ -80,7 +80,7 @@ namespace Btools.meta
     public static class Btools
     {
         /// <summary>The current version of Butil</summary>
-        public static float version = 4.00f;
+        public static float version = 4.10f;
     }
 }
 

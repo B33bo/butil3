@@ -10,12 +10,12 @@ namespace Btools.DialougeSystem
     /// <summary>Dialouge system, that uses delegates</summary>
     public class Dialouge : MonoBehaviour
     {
-        public static float timeBetweenLetters = .05f;
-        public static string currentText;
+        private string _text;
+        public static float defaultTimeBetweenLetters = .05f;
 
         private DialougeResponseComponent[] currentResponses;
         [SerializeField] private DialougeResponseComponent responseTemplate;
-        [SerializeField] private TextMeshProUGUI text;
+        [SerializeField] private TextMeshProUGUI textComponent;
         [SerializeField] private RectTransform bottomLeft;
         [SerializeField] private RectTransform bottomRight;
 
@@ -24,6 +24,9 @@ namespace Btools.DialougeSystem
         public static Dialouge Instance { get; private set; }
 
         private static bool _Skip = false;
+
+        public static string Text => Instance._text;
+        public string MyText => _text;
 
         private void Awake()
         {
@@ -40,29 +43,116 @@ namespace Btools.DialougeSystem
         public void Skip() =>
             _Skip = true;
 
-        /// <summary>Make the dialouge system say something</summary>
-        /// <param name="DisplayText">The thing to say</param>
-        /// <param name="responses">The possible responses, and what they do</param>
-        public static void Say(string DisplayText, params Response[] responses)
+        #region Static
+        public static Coroutine Say(string DisplayText) =>
+            Instance.SayInstance(DisplayText, defaultTimeBetweenLetters);
+
+        public static Coroutine Say(string DisplayText, float timeBetweenLetters) =>
+            Instance.SayInstance(DisplayText, timeBetweenLetters);
+
+        public static Coroutine Append(string thingToAppend) =>
+            Instance.AppendInstance(thingToAppend, defaultTimeBetweenLetters);
+
+        public static Coroutine Append(string thingToAppend, float timeBetweenLetters) =>
+            Instance.AppendInstance(thingToAppend, timeBetweenLetters);
+
+        public static Coroutine Remove(int letters) =>
+            Instance.RemoveInstance(letters, defaultTimeBetweenLetters);
+
+        public static Coroutine Remove(int letters, float timeBetweenLetters) =>
+            Instance.RemoveInstance(letters, timeBetweenLetters);
+
+        public static Coroutine Clear() =>
+            Instance.ClearInstance(-1);
+
+        public static Coroutine Clear(float timeBetweenLetters) =>
+            Instance.ClearInstance(timeBetweenLetters);
+
+        public static void Show() =>
+            Instance.ShowInstance();
+
+        public static void Hide() =>
+            Instance.HideInstance();
+
+        public static void AddResponses(params Response[] responses) =>
+            Instance.AddResponsesInstance(responses);
+
+        public static void ClearResponses() =>
+            Instance.ClearResponsesInstance();
+        #endregion
+
+        #region Instance
+
+        public Coroutine SayInstance(string TargetText, float timeBetweenLetters)
         {
-            Instance.SayInstance(DisplayText, responses);
+            textComponent.text = "";
+            return AppendInstance(TargetText, timeBetweenLetters);
         }
 
-        /// <summary>Make the dialouge system say something</summary>
-        /// <param name="DisplayText">The thing to say</param>
-        /// <param name="responses">The possible responses, and what they do</param>
-        public void SayInstance(string DisplayText, params Response[] responses)
+        public Coroutine AppendInstance(string thingToAppend, float timeBetweenLetters)
         {
-            gameObject.SetActive(true);
-            /**Clearing old responses**/
+            string currentText = textComponent.text;
+            string targetText = currentText + thingToAppend;
+            _text = targetText;
+
+            bool Halt = false;
+            //Prints it out
+            return Timed.RepeatUntil(() =>
+            {
+                currentText = AddLetter(targetText, currentText, ref Halt);
+                if (Halt)
+                    currentText = targetText;
+
+                textComponent.text = currentText;
+            }, () => currentText == targetText || Halt, timeBetweenLetters);
+        }
+
+        public Coroutine RemoveInstance(int letters, float timeBetweenLetters)
+        {
+            string currentText = textComponent.text;
+            string targetText = currentText.Substring(0, currentText.Length - letters);
+            _text = targetText;
+
+            bool Halt = false;
+            return Timed.RepeatUntil(() =>
+            {
+                currentText = currentText.Substring(0, currentText.Length - 1);
+                textComponent.text = currentText;
+                if (Halt)
+                    currentText = targetText;
+
+                Halt = _text != targetText;
+
+            }, () => currentText == targetText || Halt, timeBetweenLetters);
+        }
+
+        public Coroutine ClearInstance(float timeBetweenLetters)
+        {
+            if (timeBetweenLetters < 0)
+            {
+                textComponent.text = "";
+                _text = "";
+                return null;
+            }
+
+            return RemoveInstance(textComponent.text.Length, timeBetweenLetters);
+        }
+
+        public void ClearResponsesInstance()
+        {
+            if (currentResponses is null)
+                return;
+
+            for (int i = 0; i < currentResponses.Length; i++)
+                Destroy(currentResponses[i].gameObject);
+        }
+
+        public void AddResponsesInstance(params Response[] responses)
+        {
+            ClearResponsesInstance();
+
             float start = bottomLeft.localPosition.x;
             float end = bottomRight.localPosition.x;
-
-            if (currentResponses != null)
-            {
-                for (int i = 0; i < currentResponses.Length; i++)
-                    Destroy(currentResponses[i].gameObject); //clear current questions
-            }
 
             currentResponses = new DialougeResponseComponent[responses.Length];
 
@@ -86,44 +176,45 @@ namespace Btools.DialougeSystem
 
                 currentResponses[i] = DialougeResponse;
             }
+        }
 
-            text.text = "";
-            string str = "";
+        public void ShowInstance() =>
+            gameObject.SetActive(true);
 
-            currentText = DisplayText;
+        public void HideInstance() =>
+            gameObject.SetActive(false);
 
-            bool Halt = false;
-            //Prints it out
-            Timed.RepeatUntil(() =>
+        #endregion
+
+        private string AddLetter(string TargetText, string CurrentText, ref bool Halt)
+        {
+            if (_Skip)
             {
-                if (_Skip)
-                {
-                    text.text = currentText;
-                    Halt = true;
-                    _Skip = false;
-                    return;
-                }
+                Halt = true;
+                _Skip = false;
+                return CurrentText;
+            }
 
-                if (currentText != DisplayText)
-                {
-                    Halt = true;
-                    return;
-                }
+            //Another dialouge was started
+            if (_text != TargetText)
+            {
+                Halt = true;
+                return TargetText;
+            }
 
-                if (DisplayText[str.Length] == '<')
-                {
-                    string newString = GetStringFromAngleBrackets(currentText, str.Length);
-                    str += newString;
-                    return;
-                }
+            if (TargetText[CurrentText.Length] == '<')
+            {
+                string newString = GetStringFromAngleBrackets(CurrentText, CurrentText.Length);
+                CurrentText += newString;
+                return CurrentText;
+            }
 
-                str += DisplayText[str.Length];
-                text.text = str;
+            CurrentText += TargetText[CurrentText.Length];
 
-                if (BlipSound)
-                    AudioSource.PlayClipAtPoint(BlipSound, Camera.main.transform.position, .2f);
+            if (BlipSound)
+                AudioSource.PlayClipAtPoint(BlipSound, Camera.main.transform.position, .2f);
 
-            }, () => str == DisplayText || Halt, timeBetweenLetters);
+            return CurrentText;
         }
 
         private string GetStringFromAngleBrackets(string s, int start)
