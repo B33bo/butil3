@@ -1,7 +1,6 @@
 using UnityEngine;
 using TMPro;
 using Btools.utils;
-using Btools.Extensions;
 
 namespace Btools.DevConsole
 {
@@ -16,9 +15,17 @@ namespace Btools.DevConsole
         [SerializeField]
         private TextMeshProUGUI CommandOutput;
 
+        [SerializeField]
+        private string CommandOnStart;
+
         private void Start()
         {
             Application.logMessageReceived += LogMessageRevieved;
+
+#if UNITY_EDITOR
+            if (!CommandOnStart.StartsWith("//"))
+                Debug.Log("DV:\n" + DevCommands.Execute(CommandOnStart));
+#endif
         }
 
         private void LogMessageRevieved(string condition, string stackTrace, LogType type)
@@ -33,7 +40,7 @@ namespace Btools.DevConsole
                 _ => "<#FFFFFF>",
             };
 
-            CommandOutput.text += $"{ColorString}{condition}</color>";
+            CommandOutput.text += $"Log> {ColorString}{condition}</color>\n";
         }
 
         public void TypedWord(string text)
@@ -60,16 +67,18 @@ namespace Btools.DevConsole
 
         public void Run(string text)
         {
-            string[] parameters = text.SplitEscaped(',');
-
-            string commandCallback = DevCommands.Excecute(parameters[0].ToLower(), parameters);
+            CommandOutput.text += $"<#00FA05>> {text}</color>\n";
+            string commandCallback = DevCommands.Execute(text);
             CommandOutput.text += commandCallback + "\n";
             CommandOutput.rectTransform.anchoredPosition = new Vector2(0, CommandOutput.renderedHeight + 50);
 
-            if (commandCallback == "$clearConsole")
+            if (commandCallback.Contains("$clearConsole"))
                 CommandOutput.text = "";
-            else if (commandCallback == "$resetConsole")
-                GetComponent<Btools.Components.Window>().IsFullscreen = false;
+            else if (commandCallback.Contains("$resetConsole"))
+            {
+                GetComponent<Components.Window>().IsFullscreen = false;
+                transform.position = Vector2.zero;
+            }
         }
     }
 }

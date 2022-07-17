@@ -27,8 +27,7 @@ namespace Btools.DevConsole
 
             if (GUILayout.Button("Do", GUILayout.Width(100)))
             {
-                string[] parameters = CurrentCommand.SplitEscaped(',');
-                Debug.Log(DevCommands.Excecute(parameters[0], parameters));
+                Debug.Log(DevCommands.Execute(CurrentCommand));
             }
 
             GUILayout.EndHorizontal();

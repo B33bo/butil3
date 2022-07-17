@@ -43,30 +43,28 @@ namespace Btools.TimedEvents
         /// <summary> Repeats the code until the condition is met, every frame </summary>
         /// <param name="action">Code to run</param>
         /// <param name="StopRunning">The condition to stop at</param>
-        public static Coroutine RepeatUntil(Action action, Func<bool> StopRunning) =>
-            EmptyMonoBehaviour.EmptyMonobehaviour.StartCoroutine(Coroutine_RepeatUntil(action, StopRunning));
+        public static Coroutine RepeatUntil(Func<bool> action) =>
+            EmptyMonoBehaviour.EmptyMonobehaviour.StartCoroutine(Coroutine_RepeatUntil(action));
 
         /// <summary> Repeats the code until the condition is met, every interval </summary>
         /// <param name="action">Code to run</param>
         /// <param name="StopRunning">The condition to stop at</param>
         /// <param name="interval">The interval for the code to run</param>
-        public static Coroutine RepeatUntil(Action action, Func<bool> StopRunning, float interval) =>
-            EmptyMonoBehaviour.EmptyMonobehaviour.StartCoroutine(Coroutine_RepeatUntil(action, StopRunning, interval));
+        public static Coroutine RepeatUntil(Func<bool> action, float interval) =>
+            EmptyMonoBehaviour.EmptyMonobehaviour.StartCoroutine(Coroutine_RepeatUntil(action, interval));
 
-        private static IEnumerator Coroutine_RepeatUntil(Action action, Func<bool> StopRunning, float interval)
+        private static IEnumerator Coroutine_RepeatUntil(Func<bool> action, float interval)
         {
-            while (!StopRunning.Invoke())
+            while (!action.Invoke())
             {
-                action.Invoke();
                 yield return new WaitForSeconds(interval);
             }
         }
 
-        private static IEnumerator Coroutine_RepeatUntil(Action action, Func<bool> predicate)
+        private static IEnumerator Coroutine_RepeatUntil(Func<bool> action)
         {
-            while (!predicate.Invoke())
+            while (!action.Invoke())
             {
-                action.Invoke();
                 yield return new WaitForEndOfFrame();
             }
         }
@@ -81,8 +79,7 @@ namespace Btools.TimedEvents
 
         private static IEnumerator Coroutine_AfterFrames(Action action, int frames)
         {
-            for (int i = 0; i < frames; i++)
-                yield return new WaitForEndOfFrame();
+            yield return new WaitForFrames(frames);
             action.Invoke();
         }
         #endregion

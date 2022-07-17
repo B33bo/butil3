@@ -66,7 +66,7 @@ namespace Btools.Components
                 _IsFullscren = value;
                 if (value)
                 {
-                    rectTransform.sizeDelta = new Vector2(Screen.width / canvas.scaleFactor, Screen.height / canvas.scaleFactor);
+                    rectTransform.sizeDelta = new Vector2(canvas.pixelRect.width / rectTransform.localScale.x, canvas.pixelRect.height / rectTransform.localScale.y) / canvas.scaleFactor;
                     rectTransform.anchoredPosition = Vector2.zero;
                     return;
                 }

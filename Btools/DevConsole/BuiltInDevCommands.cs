@@ -1,51 +1,40 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System;
 using System.Reflection;
 using System.Collections.Generic;
+using Btools.Extensions;
 
 namespace Btools.DevConsole
 {
     internal static class BuiltInDevCommands
     {
-        public static Type thisType => typeof(BuiltInDevCommands);
-        public static Dictionary<string, Func<string[], string>> Builtins => new Dictionary<string, Func<string[], string>>()
+        public static Dictionary<string, DevConsoleCommand> Builtins => new Dictionary<string, DevConsoleCommand>()
         {
-            {"", _ => "" },
-            {"timescale", x => DevCommands.SetProperty(x, thisType.GetProperty("TimeScale"), null) },
-            {"quit", Quit },
-            {"exit", Quit },
-            {"log", LogMessage },
-            {"echo", x => x[1] },
-            {"scene", LoadScene },
-            {"clear", _ => "$clearConsole" },
-            {"maxfps", x => DevCommands.SetProperty(x, thisType.GetProperty("MaxFPS"), null)},
-            {"fps", _ => FPS.ToString() },
-            {"objects", x => ListObjects(x) },
-            {"destroy", x => Destroy(x) },
-            {"pos", Position },
-            {"rot", Rotation},
-            {"scale", Scale},
-            {"clone", Clone},
-            {"parent", SetParent},
-            {"reset", _ => "$resetConsole" },
-            {"varedit", ComponentVariable },
-            {"components", ComponentsOf },
+            {"", new DevConsoleCommand("", "", x => "") },
+            {"no_op", new DevConsoleCommand("no_op", "no operation; do nothing", x => "") },
+            {"quit", new DevConsoleCommand("quit", "quits the game", Quit, "quit|crash") },
+            {"exit", new DevConsoleCommand("exit", "same as quit", Quit, "quit|crash") },
+            {"log", new DevConsoleCommand("log", "logs to the unity console", LogMessage, "log|warn|error|assert|except|all") },
+            {"echo", new DevConsoleCommand("echo", "returns the parameter to the DevConsole (not the unity console)", x => x[1], "message") },
+            {"scene", new DevConsoleCommand("scene", "load a scene in unity", LoadScene, "sceneName", "single|add|unload")},
+            {"clear", new DevConsoleCommand("clear", "clears the devConsole by sending a clear command ($ + clearConsole)", x => "$clearConsole") },
+            {"objects", new DevConsoleCommand("objects", "list all the objects in all scenes", ListObjects, "tree|flat") },
+            {"destroy", new DevConsoleCommand("destroy", "destroy a gameobject at the specific path", Destroy, "sceneName/objectParent/object") },
+            {"posofobj", new DevConsoleCommand("posofobj", "get/set the position of an object", Position, "objpath", "x", "y", "z") },
+            {"rotofobj", new DevConsoleCommand("rotofobj", "get/set the rotation of an object", Rotation, "objpath", "rot", "y", "z", "w")},
+            {"scaleofobj", new DevConsoleCommand("scaleofobj", "get/set the scale of an object", Scale, "objpath", "x", "y", "z")},
+            {"clone", new DevConsoleCommand("clone", "makes a copy of the object", Clone, "objpath", "name")},
+            {"parent", new DevConsoleCommand("parent", "sets the parent of an object to another object", SetParent, "child", "parent")},
+            {"reset", new DevConsoleCommand("reset", "sends a command to the console to reset it ($ + resetConsole)", x => "$resetConsole") },
+            {"varedit", new DevConsoleCommand("varedit", "change the variable of a component", ComponentVariable, "object", "component name", "var name", "new value") },
+            {"components", new DevConsoleCommand("components", "list the components of an object", ComponentsOf, "object") },
+            {"help", new DevConsoleCommand("help", "gives a description of the variable/command", Help, "comand name|variable name", "command|variable")},
+            {"camsize", new DevConsoleCommand("camsize", "set the cam size of any camera", CamSize, "size", "object") },
+            {"playerprefs", new DevConsoleCommand("playerprefs", "gets/sets the value of a player pref", PlayerPrefsEdit, "int|string|float|delete", "name", "newValue") },
+            {"history", new DevConsoleCommand("history", "read the command history", History) },
+            {"splash", new DevConsoleCommand("splash", "show the splash screen", Splash) }
         };
-#pragma warning disable IDE0051 // Remove unused private members
-
-        public static float TimeScale
-        {
-            get => Time.timeScale;
-            set => Time.timeScale = value;
-        }
-
-        public static int MaxFPS
-        {
-            get => Application.targetFrameRate;
-            set => Application.targetFrameRate = value;
-        }
-
-        public static float FPS => 1f / Time.deltaTime;
 
         private static string Quit(string[] Parameters)
         {
@@ -59,6 +48,7 @@ namespace Btools.DevConsole
             }
 
             UnityEngine.Diagnostics.Utils.ForceCrash(UnityEngine.Diagnostics.ForcedCrashCategory.Abort);
+
             return "Force crash";
         }
 
@@ -96,6 +86,7 @@ namespace Btools.DevConsole
                     logType = LogType.Assert;
                     break;
                 case "exception":
+                case "except":
                     Debug.LogException(new Exception(Parameters[1]));
                     logType = LogType.Exception;
                     break;
@@ -109,12 +100,12 @@ namespace Btools.DevConsole
             }
             string ColorString = logType switch
             {
-                LogType.Assert => "<#FF0000>",
-                LogType.Error => "<#FF0000>",
-                LogType.Exception => "<#FF0000>",
-                LogType.Log => "<#CCCCCC>",
-                LogType.Warning => "<#FFFF00>",
-                _ => "<#FFFFFF>",
+                LogType.Assert => "<color=#FF0000>",
+                LogType.Error => "<color=#FF0000>",
+                LogType.Exception => "<color=#FF0000>",
+                LogType.Log => "<color=#CCCCCC>",
+                LogType.Warning => "<color=#FFFF00>",
+                _ => "<color=#FFFFFF>",
             };
 
             return ColorString + Parameters[1] + "</color>";
@@ -123,11 +114,23 @@ namespace Btools.DevConsole
         private static string LoadScene(string[] Parameters)
         {
             if (Parameters.Length == 1)
-                return UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            {
+                var scenes = SceneManager.sceneCount;
+                string s = "";
+                for (int i = 0; i < scenes; i++)
+                {
+                    var currentScene = SceneManager.GetSceneAt(i);
+                    if (currentScene == SceneManager.GetActiveScene())
+                        s += "<color=#00FF00>" + currentScene.name + "</color>";
+                    else
+                        s += currentScene.name + "\n";
+                }
+                return s;
+            }
 
             if (Parameters.Length == 2)
             {
-                UnityEngine.SceneManagement.SceneManager.LoadScene(Parameters[1]);
+                SceneManager.LoadScene(Parameters[1]);
                 return Parameters[1];
             }
 
@@ -138,15 +141,19 @@ namespace Btools.DevConsole
                     default:
                         return $"{Parameters[2]} is invalid";
                     case "unload":
-                        UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(Parameters[2]);
-                        return "Unloaded " + Parameters[2];
+                    case "subtract":
+                    case "-":
+                        SceneManager.UnloadSceneAsync(Parameters[1]);
+                        return "Unloaded " + Parameters[1];
                     case "load":
                     case "single":
-                        UnityEngine.SceneManagement.SceneManager.LoadScene(Parameters[2]);
-                        return "loaded " + Parameters[2];
+                    case "=":
+                        SceneManager.LoadScene(Parameters[1]);
+                        return "loaded " + Parameters[1];
                     case "add":
-                        UnityEngine.SceneManagement.SceneManager.LoadScene(Parameters[2], UnityEngine.SceneManagement.LoadSceneMode.Additive);
-                        return "added " + Parameters[2];
+                    case "+":
+                        SceneManager.LoadScene(Parameters[1], LoadSceneMode.Additive);
+                        return "added " + Parameters[1];
                 }
             }
 
@@ -158,7 +165,7 @@ namespace Btools.DevConsole
             bool tree = true;
             for (int i = 1; i < Parameters.Length; i++)
             {
-                if (Parameters[i].Replace(" ", "") == "tree=false")
+                if (Parameters[i].Replace(" ", "") == "flat")
                     tree = false;
             }
 
@@ -171,45 +178,48 @@ namespace Btools.DevConsole
                 return s;
             }
 
-            var AllGameobjects = GameObject.FindObjectsOfType<GameObject>();
-            List<GameObject> ParentlessGameobjects = new List<GameObject>(10); //L + Fatherless
-            for (int i = 0; i < AllGameobjects.Length; i++)
+            string output = "";
+            for (int i = -1; i < SceneManager.sceneCount; i++)
             {
-                if (AllGameobjects[i].transform.parent is null)
-                    ParentlessGameobjects.Add(AllGameobjects[i]);
-            }
+                Scene currentScene;
+                if (i == -1)
+                    currentScene = GameObjectUtils.DontDestroyOnLoadScene;
+                else
+                    currentScene = SceneManager.GetSceneAt(i);
 
-            string AllObjects = "";
-            for (int i = 0; i < ParentlessGameobjects.Count; i++)
-            {
-                AllObjects += GetObjectsInsideOf(ParentlessGameobjects[i].transform, 0) + "\n";
+                output += $"<color=#FF0000>{currentScene.name}</color>\n";
+                var objectsInScene = currentScene.GetRootGameObjects();
+                foreach (var gameObj in objectsInScene)
+                {
+                    output += GetObjectsInsideOf(gameObj.transform, 1) + "\n";
+                }
             }
-
-            return AllObjects;
+            return output;
         }
 
         private static string GetObjectsInsideOf(Transform TargetObject, int tabIndex)
         {
             string[] colourCodes = new string[]
             {
-                "#660000",
-                "#666600",
-                "#006600",
-                "#006666",
-                "#000066",
-                "#660066",
-                "#000066",
-                "#006666",
-                "#006600",
-                "#666600",
+                "<color=#FF0000>",
+                "<color=#FFFF00>",
+                "<color=#00FF00>",
+                "<color=#00FFFF>",
+                "<color=#0000FF>",
+                "<color=#FF00FF>",
+                "<color=#0000FF>",
+                "<color=#00FFFF>",
+                "<color=#00FF00>",
+                "<color=#FFFF00>",
             };
-            string tabs = "";
+            string pipes = "";
 
+            //load all of the pipes ('|')
             for (int i = 0; i < tabIndex; i++)
-                tabs += $"<{colourCodes[i % colourCodes.Length]}>|</color>";
+                pipes += $"{colourCodes[i % colourCodes.Length]}\u2502</color>";
 
-            string MyColourCode = $"<{colourCodes[tabIndex % colourCodes.Length]}>".Replace("6", "F");
-            string FinalString = tabs + MyColourCode + TargetObject.name + "</color>";
+            string colourCode = colourCodes[tabIndex % colourCodes.Length];
+            string FinalString = pipes + colourCode + TargetObject.name + "</color>";
             Transform[] children = TargetObject.transform.GetComponentsInChildren<Transform>();
 
             for (int i = 0; i < children.Length; i++)
@@ -226,15 +236,20 @@ namespace Btools.DevConsole
         private static string Destroy(string[] Parameters)
         {
             List<string> failedObjects = new List<string>();
+
             for (int i = 1; i < Parameters.Length; i++)
             {
-                GameObject destoryObject = GameObject.Find(Parameters[i]);
-
-                if (destoryObject is null)
-                    failedObjects.Add(Parameters[i]);
-                else
-                    MonoBehaviour.Destroy(destoryObject);
+                try
+                {
+                    var currentGm = GameObjectUtils.FindPath(Parameters[i].SplitEscaped('/'));
+                    MonoBehaviour.Destroy(currentGm);
+                }
+                catch (Exception exc)
+                {
+                    failedObjects.Add(Parameters[i] + ", " + exc.Message);
+                }
             }
+
             string failedObjectsString = null;
             for (int i = 0; i < failedObjects.Count; i++)
                 failedObjectsString += $"Failed To Destroy: {failedObjects[i]}\n";
@@ -244,7 +259,7 @@ namespace Btools.DevConsole
 
         private static string Position(string[] Parameters)
         {
-            GameObject gameObject = GameObject.Find(Parameters[1]);
+            GameObject gameObject = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
             if (Parameters.Length == 4)
                 gameObject.transform.position = new Vector2(float.Parse(Parameters[2]), float.Parse(Parameters[3]));
             else if (Parameters.Length > 4)
@@ -255,7 +270,7 @@ namespace Btools.DevConsole
 
         private static string Rotation(string[] Parameters)
         {
-            GameObject gameObject = GameObject.Find(Parameters[1]);
+            GameObject gameObject = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
 
             if (Parameters.Length == 3)
                 gameObject.transform.rotation = Quaternion.Euler(0, 0, float.Parse(Parameters[2]));
@@ -269,7 +284,7 @@ namespace Btools.DevConsole
 
         private static string Scale(string[] Parameters)
         {
-            GameObject gameObject = GameObject.Find(Parameters[1]);
+            GameObject gameObject = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
 
             if (Parameters.Length == 3)
                 gameObject.transform.localScale *= float.Parse(Parameters[2]);
@@ -283,7 +298,7 @@ namespace Btools.DevConsole
 
         private static string Clone(string[] Parameters)
         {
-            GameObject gameObject = GameObject.Find(Parameters[1]);
+            GameObject gameObject = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
             GameObject newGM;
 
             if (Parameters.Length > 2)
@@ -299,18 +314,23 @@ namespace Btools.DevConsole
 
         private static string SetParent(string[] Parameters)
         {
-            GameObject target = GameObject.Find(Parameters[1]);
-            GameObject parent = GameObject.Find(Parameters[2]);
+            GameObject target = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
+            if (Parameters[2] == "null")
+            {
+                target.transform.parent = null;
+                return $"{target.name} now has no parent. you monster.";
+            }
+            GameObject parent = GameObjectUtils.FindPath(Parameters[2]);
 
             target.transform.parent = parent.transform;
 
-            return $"{target.name} is not parent of {parent.name}";
+            return $"{target.name} is now parent of {parent.name}";
         }
 
-        //ComponentVar,GameObject,ComponentName,VarName,NewVal?
+        //"varedit",GameObject,ComponentName,VarName,NewVal?
         private static string ComponentVariable(string[] Parameters)
         {
-            GameObject target = GameObject.Find(Parameters[1]);
+            GameObject target = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
             Component component = target.GetComponent(Parameters[2]);
             Type type = component.GetType();
 
@@ -370,12 +390,10 @@ namespace Btools.DevConsole
 
         private static string ComponentsOf(string[] Parameters)
         {
-            GameObject gameObject = GameObject.Find(Parameters[1]);
+            GameObject gameObject = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
 
             Component[] components = gameObject.GetComponents(typeof(Component));
             string s = "";
-
-            MemberInfo[] normalVars = typeof(Component).GetMembers();
 
             for (int i = 0; i < components.Length; i++)
             {
@@ -384,14 +402,103 @@ namespace Btools.DevConsole
             return s;
         }
 
-        private static bool Contains(this MemberInfo[] array, MemberInfo a)
+        private static string Help(string[] Parameters)
         {
-            for (int i = 0; i < array.Length; i++)
+            if (Parameters.Length == 1)
             {
-                if (array[i] == a)
-                    return true;
+                string s = "COMMANDS:\n";
+                foreach (var command in DevCommands.Commands)
+                {
+                    s += command.Key + "\n";
+                }
+                s += "\nVARIABLES:\n";
+                foreach (var command in DevCommands.Variables)
+                {
+                    s += command.Key + "\n";
+                }
+                return s;
             }
-            return false;
+            if (Parameters.Length == 2)
+            {
+                if (DevCommands.Commands.ContainsKey(Parameters[1]))
+                    return DevCommands.Commands[Parameters[1]].ToString();
+
+                if (!DevCommands.Variables.ContainsKey(Parameters[1]))
+                    return $"variable or command {Parameters[1]} does not exist.";
+
+                return DevCommands.Variables[Parameters[1]].ToString();
+            }
+
+            if (Parameters[2] == "variable")
+            {
+                if (!DevCommands.Variables.ContainsKey(Parameters[1]))
+                    return $"variable {Parameters[1]} does not exist.";
+
+                return DevCommands.Variables[Parameters[1]].ToString();
+            }
+
+            if (DevCommands.Commands.ContainsKey(Parameters[1]))
+                return DevCommands.Commands[Parameters[1]].ToString();
+
+            return $"command {Parameters[1]} does not exist.";
+        }
+
+        private static string CamSize(string[] Parameters)
+        {
+            if (Parameters.Length == 1)
+                return Camera.main.orthographicSize.ToString();
+
+            Camera cameraChosen;
+            float size = float.Parse(Parameters[1]);
+            if (Parameters.Length == 2)
+                cameraChosen = Camera.main;
+            else
+                cameraChosen = GameObjectUtils.FindPath(Parameters[2].SplitEscaped('/')).GetComponent<Camera>();
+
+            cameraChosen.fieldOfView = size;
+            cameraChosen.orthographicSize = size;
+            return cameraChosen.orthographicSize.ToString();
+        }
+
+        private static string PlayerPrefsEdit(string[] Parameters)
+        {
+            switch (Parameters[1])
+            {
+                default:
+                    return $"<color=#FF0000>Unknown Type '{Parameters[1]}' must be int, float, string, or delete to delete a key</color>";
+                case "int":
+                    if (Parameters.Length > 3)
+                        PlayerPrefs.SetInt(Parameters[2], int.Parse(Parameters[3]));
+                    return PlayerPrefs.GetInt(Parameters[2]).ToString();
+                case "float":
+                    if (Parameters.Length > 3)
+                        PlayerPrefs.SetFloat(Parameters[2], float.Parse(Parameters[3]));
+                    return PlayerPrefs.GetFloat(Parameters[2]).ToString();
+                case "string":
+                    if (Parameters.Length > 3)
+                        PlayerPrefs.SetString(Parameters[2], Parameters[3]);
+                    return PlayerPrefs.GetString(Parameters[2]);
+                case "delete":
+                    PlayerPrefs.DeleteKey(Parameters[2]);
+                    return (!PlayerPrefs.HasKey(Parameters[2])).ToString();
+            }
+        }
+
+        private static string History(string[] Parameters)
+        {
+            string s = "command history:\n";
+            for (int i = 0; i < DevCommands.History.Count; i++)
+            {
+                s += DevCommands.History[i] + "\n";
+            }
+            s += "END OF HISTORY";
+            return s;
+        }
+
+        private static string Splash(string[] Parameters)
+        {
+            UnityEngine.Rendering.SplashScreen.Begin();
+            return "";
         }
 
         private enum MemberType : byte

@@ -23,7 +23,7 @@ namespace Btools.DialougeSystem
 
         public static Dialouge Instance { get; private set; }
 
-        private static bool _Skip = false;
+        private bool _Skip = false;
 
         public static string Text => Instance._text;
         public string MyText => _text;
@@ -39,9 +39,6 @@ namespace Btools.DialougeSystem
             if (Input.GetKeyDown(KeyCode.Tab))
                 Skip();
         }
-
-        public void Skip() =>
-            _Skip = true;
 
         #region Static
         public static Coroutine Say(string DisplayText) =>
@@ -79,6 +76,9 @@ namespace Btools.DialougeSystem
 
         public static void ClearResponses() =>
             Instance.ClearResponsesInstance();
+			
+		public static void Skip() =>
+            Instance._Skip = true;
         #endregion
 
         #region Instance
@@ -104,7 +104,8 @@ namespace Btools.DialougeSystem
                     currentText = targetText;
 
                 textComponent.text = currentText;
-            }, () => currentText == targetText || Halt, timeBetweenLetters);
+                return currentText == targetText || Halt;
+            }, timeBetweenLetters);
         }
 
         public Coroutine RemoveInstance(int letters, float timeBetweenLetters)
@@ -122,8 +123,8 @@ namespace Btools.DialougeSystem
                     currentText = targetText;
 
                 Halt = _text != targetText;
-
-            }, () => currentText == targetText || Halt, timeBetweenLetters);
+                return currentText == targetText || Halt;
+            }, timeBetweenLetters);
         }
 
         public Coroutine ClearInstance(float timeBetweenLetters)
@@ -183,6 +184,9 @@ namespace Btools.DialougeSystem
 
         public void HideInstance() =>
             gameObject.SetActive(false);
+			
+		public void SkipInstance() =>
+            _Skip = true;
 
         #endregion
 

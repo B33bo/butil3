@@ -2,19 +2,34 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+
+#if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
+#endif
 
 namespace Btools.Components
 {
     /// <summary>Scales an image to the right dimenstions in the UI</summary>
-    [ExecuteInEditMode]
     [AddComponentMenu("UI/Image Scaler")]
+    [System.Serializable]
     public class UIscaler : MonoBehaviour
     {
-        public bool UseXAxis;
+        [SerializeField]
+        private bool useXAxis;
+
+        public bool UseXAxis
+        {
+            get => useXAxis;
+            set
+            {
+                useXAxis = value;
+                ResetSprite();
+            }
+        }
 
         [SerializeField]
-        float scale;
+        private float scale;
 
         /// <summary>The scale of the UI item</summary>
         public float Scale
@@ -30,9 +45,47 @@ namespace Btools.Components
             }
         }
 
+        [SerializeField]
         private RectTransform rectTransform;
+
+        [SerializeField]
         private Image sp;
+
+        [SerializeField]
+        private PositionType imagePositionType;
+
+        [SerializeField]
+        private Vector2 anchorPositionOffset;
+
+        [SerializeField]
         private Sprite oldSprite;
+
+        public Vector2 Offset
+        {
+            get => anchorPositionOffset;
+            set
+            {
+                anchorPositionOffset = value;
+                ResetSprite();
+            }
+        }
+
+        public PositionType ImagePositionType
+        {
+            get => imagePositionType;
+            set
+            {
+                imagePositionType = value;
+                ResetSprite();
+            }
+        }
+
+        public enum PositionType
+        {
+            None,
+            PositionByAnchor,
+            PositionByAnchorAndScale,
+        }
 
         void Awake()
         {
@@ -50,7 +103,14 @@ namespace Btools.Components
                 sp = GetComponent<Image>();
 
             if (!sp.sprite)
+            {
+                rectTransform.sizeDelta = new Vector2(Scale, Scale);
+                if (imagePositionType == PositionType.PositionByAnchor)
+                    rectTransform.anchoredPosition = Offset;
+                else if (imagePositionType == PositionType.PositionByAnchorAndScale)
+                    rectTransform.anchoredPosition = Offset * rectTransform.sizeDelta;
                 return;
+            }
 
             float width = sp.sprite.rect.width;
             float height = sp.sprite.rect.height;
@@ -62,10 +122,17 @@ namespace Btools.Components
             else
                 aspectRatio = width / height;
 
+            Vector2 size;
             if (UseXAxis)
-                rectTransform.sizeDelta = new Vector2(scale, scale * aspectRatio);
+                size = new Vector2(scale, scale * aspectRatio);
             else
-                rectTransform.sizeDelta = new Vector2(scale * aspectRatio, scale);
+                size = new Vector2(scale * aspectRatio, scale);
+            rectTransform.sizeDelta = size;
+
+            if (imagePositionType == PositionType.PositionByAnchor)
+                rectTransform.anchoredPosition = Offset;
+            else if (imagePositionType == PositionType.PositionByAnchorAndScale)
+                rectTransform.anchoredPosition = Offset * size;
         }
 
         void Update()
@@ -97,18 +164,30 @@ namespace Btools.Components
             script.Scale = EditorGUILayout.FloatField("Scale", scale);
 
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Axis selected:");
+            EditorGUILayout.LabelField("Axis selected");
 
             if (GUILayout.Button(UseXAxis ? "X axis" : "Y axis"))
                 script.UseXAxis = !script.UseXAxis;
 
             EditorGUILayout.EndHorizontal();
 
-            if (scale != script.Scale)
+            script.ImagePositionType = (UIscaler.PositionType)EditorGUILayout.EnumPopup("Position Type", script.ImagePositionType);
+
+            if (script.ImagePositionType != UIscaler.PositionType.None)
+            {
+                script.Offset = EditorGUILayout.Vector2Field("Offset", script.Offset);
+            }
+
+            if (GUILayout.Button("Refresh"))
                 script.ResetSprite();
 
-            if (UseXAxis != script.UseXAxis)
-                script.ResetSprite();
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            if (GUI.changed)
+            {
+                EditorUtility.SetDirty(target);
+                EditorSceneManager.MarkSceneDirty((target as UIscaler).gameObject.scene);
+            }
         }
     }
 #endif

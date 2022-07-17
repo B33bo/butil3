@@ -61,9 +61,12 @@ namespace Btools.Extensions
 
                 if (Text[i] == '\\')
                 {
-                    currentWord += Text[i + 1];
-                    i++;
-                    continue;
+                    if (Text[i + 1] == splitCharacter)
+                    {
+                        currentWord += Text[i + 1];
+                        i++;
+                        continue;
+                    }
                 }
 
                 if (Text[i] == splitCharacter)
