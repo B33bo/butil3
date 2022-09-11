@@ -14,6 +14,7 @@ namespace Btools.utils
                 {
                     GameObject gameObject = new GameObject("Empty MonoBehaviour");
                     m_emptyMonoBehaviour = gameObject.AddComponent<EmptyMonoBehaviour>();
+                    DontDestroyOnLoad(m_emptyMonoBehaviour);
                 }
 
                 return m_emptyMonoBehaviour;

@@ -113,7 +113,184 @@ namespace Btools.DevConsole
             {"glitch_variable", new DevConsoleVariable(
                 "glitch_variable",
                 "a variable that throws an error when attempting to get it's value",
-                typeof(void), null) }
+                typeof(void), null) },
+
+            {"elapsed_time", new DevConsoleVariable(
+                "elapsed_time",
+                "the total time elapsed since the beginning of the game",
+                typeof(float), () => Time.time)},
+
+            {"frame_count", new DevConsoleVariable(
+                "frame_count",
+                "the frames elapsed since the beginning of the game",
+                typeof(int), () => Time.frameCount)},
+
+            {"current_date", new DevConsoleVariable(
+                "current_date",
+                "the date and time",
+                typeof(System.DateTime), () => System.DateTime.Now)},
+
+            {"current_date_utc", new DevConsoleVariable(
+                "current_date",
+                "the date and time in universal time",
+                typeof(System.DateTime), () => System.DateTime.UtcNow)},
+
+            {"$", new DevConsoleVariable(
+                "$",
+                "the dollar symbol",
+                typeof(string),
+                () =>"$"
+                )},
+
+            {"dollar", new DevConsoleVariable(
+                "dollar",
+                "the dollar symbol (alias for $)",
+                typeof(string),
+                () =>"$"
+                )},
+
+            {"inf", new DevConsoleVariable(
+                "inf",
+                "infinity",
+                typeof(float),
+                () => float.PositiveInfinity
+                )},
+
+            {"-inf", new DevConsoleVariable(
+                "-inf",
+                "negative infinity",
+                typeof(float),
+                () => float.NegativeInfinity
+                )},
+
+            {"nan", new DevConsoleVariable(
+                "nan",
+                "nan (not a number)",
+                typeof(float),
+                () => float.NaN
+                )},
+
+            {"epsilon", new DevConsoleVariable(
+                "epsilon",
+                "float epsilon",
+                typeof(float),
+                () => float.Epsilon
+                )},
+
+            #region Integer Limits
+
+            {"floatmax", new DevConsoleVariable(
+                "floatmax",
+                $"float maximum value ({float.MaxValue})",
+                typeof(float),
+                () => float.MaxValue
+                ) },
+
+            {"floatmin", new DevConsoleVariable(
+                "floatmin",
+                $"float minimum value ({float.MinValue})",
+                typeof(float),
+                () => float.MinValue
+                ) },
+
+            {"doublemax", new DevConsoleVariable(
+                "doublemax",
+                $"double maximum value ({double.MaxValue})",
+                typeof(double),
+                () => double.MaxValue
+                ) },
+
+            {"doublemin", new DevConsoleVariable(
+                "doublemin",
+                $"double minimum value ({double.MinValue})",
+                typeof(double),
+                () => double.MinValue
+                ) },
+
+            {"int8max", new DevConsoleVariable(
+                "int8max",
+                "the highest value of an signed 8 bit number",
+                typeof(sbyte),
+                () => sbyte.MaxValue
+                )},
+
+            {"int8min", new DevConsoleVariable(
+                "int8min",
+                "the lowest value of an signed 8 bit number",
+                typeof(sbyte),
+                () => sbyte.MinValue
+                )},
+
+            {"uint8max", new DevConsoleVariable(
+                "uint8max",
+                "the highest value of an unsigned 8 bit number",
+                typeof(byte),
+                () => byte.MaxValue
+                )},
+
+            {"int16min", new DevConsoleVariable(
+                "int16min",
+                "the lowest value of a signed 16 bit number",
+                typeof(short),
+                () => short.MinValue
+                )},
+
+            {"int16max", new DevConsoleVariable(
+                "int16max",
+                "the highest value of a signed 16 bit number",
+                typeof(short),
+                () => short.MaxValue
+                )},
+
+            {"uint16max", new DevConsoleVariable(
+                "uint16max",
+                "the highest value of an unsigned 16 bit number",
+                typeof(ushort),
+                () => ushort.MaxValue
+                )},
+
+            {"int32min", new DevConsoleVariable(
+                "int32min",
+                "the lowest value of a signed 32 bit number",
+                typeof(int),
+                () => int.MinValue
+                )},
+
+            {"int32max", new DevConsoleVariable(
+                "int32max",
+                "the highest value of a signed 32 bit number",
+                typeof(int),
+                () => int.MaxValue
+                )},
+
+            {"uint32max", new DevConsoleVariable(
+                "uint32max",
+                "the highest value of an unsigned 32 bit number",
+                typeof(uint),
+                () => uint.MaxValue
+                )},
+
+            {"int64min", new DevConsoleVariable(
+                "int64min",
+                "the lowest value of a signed 64 bit number",
+                typeof(long),
+                () => long.MinValue
+                )},
+
+            {"int64max", new DevConsoleVariable(
+                "int64max",
+                "the highest value of a signed 64 bit number",
+                typeof(long),
+                () => long.MaxValue
+                )},
+
+            {"uint64max", new DevConsoleVariable(
+                "uint64max",
+                "the highest value of an unsigned 64 bit number",
+                typeof(ulong),
+                () => ulong.MaxValue
+                )},
+#endregion
         };
     }
 }

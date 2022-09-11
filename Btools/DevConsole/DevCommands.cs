@@ -11,7 +11,10 @@ namespace Btools.DevConsole
         internal static Dictionary<string, DevConsoleVariable> Variables = BuiltInDevVariables.Builtins;
         internal static Dictionary<string, string> pureVariables = new Dictionary<string, string>();
 
-        public static List<string> History = new List<string>();
+        private static List<string> _history = new List<string>();
+
+        //ensures there is no way to maniputlate the history
+        public static string[] History => _history.ToArray();
 
         public static void Register(DevConsoleCommand Command)
         {
@@ -185,17 +188,9 @@ namespace Btools.DevConsole
         private static string ExecuteSingleCommand(string[] Parameters)
         {
             string CommandName = Parameters[0];
-            if (CommandName.Contains("="))
-            {
-                string[] varNameAndNewValue = CommandName.Split('=');
-                varNameAndNewValue[0] = varNameAndNewValue[0].Substring(1);
 
-                if (!Variables.ContainsKey(varNameAndNewValue[0]))
-                    RegisterVar(varNameAndNewValue[0], varNameAndNewValue[1]);
-
-                Variables[varNameAndNewValue[0]].Set(varNameAndNewValue[1]);
-                return varNameAndNewValue[1];
-            }
+            if (CommandName.StartsWith("$"))
+                return VariableCommand(CommandName);
 
             CommandName = CommandName.ToLower();
             if (!Commands.ContainsKey(CommandName))
@@ -215,9 +210,30 @@ namespace Btools.DevConsole
             return Commands[CommandName].Execute(Parameters);
         }
 
+        private static string VariableCommand(string Command)
+        {
+            Command = Command.Replace(" ", "");
+
+            if (!Command.Contains("="))
+                return Variables[Command.Substring(1)].Get().ToString();
+
+            string[] varNameAndNewValue = Command.Split('=');
+            varNameAndNewValue[0] = varNameAndNewValue[0].Substring(1);
+
+            if (varNameAndNewValue[1].Length > 0 && varNameAndNewValue[1][0] == '$' && Variables.ContainsKey(varNameAndNewValue[1].Substring(1)))
+                //$var1=$var2
+                varNameAndNewValue[1] = Variables[varNameAndNewValue[1].Substring(1)].Get().ToString();
+
+            if (!Variables.ContainsKey(varNameAndNewValue[0]))
+                RegisterVar(varNameAndNewValue[0], varNameAndNewValue[1]);
+
+            Variables[varNameAndNewValue[0]].Set(varNameAndNewValue[1]);
+            return Variables[varNameAndNewValue[0]].Get().ToString();
+        }
+
         public static string Execute(string Command)
         {
-            History.Add(Command);
+            _history.Add(Command);
             string[] commands = Command.SplitEscaped(';');
             string result = "";
 

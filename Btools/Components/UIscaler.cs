@@ -186,7 +186,7 @@ namespace Btools.Components
             if (GUI.changed)
             {
                 EditorUtility.SetDirty(target);
-                EditorSceneManager.MarkSceneDirty((target as UIscaler).gameObject.scene);
+                EditorSceneManager.MarkSceneDirty(script.gameObject.scene);
             }
         }
     }

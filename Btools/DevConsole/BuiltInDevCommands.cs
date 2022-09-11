@@ -4,6 +4,7 @@ using System;
 using System.Reflection;
 using System.Collections.Generic;
 using Btools.Extensions;
+using Btools.utils;
 
 namespace Btools.DevConsole
 {
@@ -33,7 +34,20 @@ namespace Btools.DevConsole
             {"camsize", new DevConsoleCommand("camsize", "set the cam size of any camera", CamSize, "size", "object") },
             {"playerprefs", new DevConsoleCommand("playerprefs", "gets/sets the value of a player pref", PlayerPrefsEdit, "int|string|float|delete", "name", "newValue") },
             {"history", new DevConsoleCommand("history", "read the command history", History) },
-            {"splash", new DevConsoleCommand("splash", "show the splash screen", Splash) }
+            {"splash", new DevConsoleCommand("splash", "show the splash screen", Splash) },
+            {"bind", new DevConsoleCommand("bind", "bind a command to a key", Bind, "key", "Held|Down|Up", "Command") },
+            {"unbind", new DevConsoleCommand("unbind", "unbind a dev key binds", Unbind, "key") },
+            {"update", new DevConsoleCommand("update", "make a command run every frame", Update, "Update|Fixed", "Command") },
+            {"unregister_update", new DevConsoleCommand("unregister_update", "remove all update commands", UnregisterUpdates) },
+            {"if", new DevConsoleCommand("if", "run a command if the condition is met", If, "condition", "command") },
+            {"delay", new DevConsoleCommand("delay", "run a command after the delay", Delay, "length", "seconds|real_time|frames", "Command") },
+            {"set", new DevConsoleCommand("set", "set a variable", Set, "varName", "varData") },
+            {"get", new DevConsoleCommand("get", "get a variable", Get, "varName") },
+            {"run", new DevConsoleCommand("run", "run a variable", Run, "Command") },
+            {"new_command", new DevConsoleCommand("new_command", "make a new command that runs other commands", NewCommand, "Name", "Description", "Command", "Params") },
+            {"remove_command", new DevConsoleCommand("remove_command", "remove a command", RemoveCommand, "CommandName") },
+            {"remove_variable", new DevConsoleCommand("remove_variable", "remove a variable", RemoveVariable, "VarName") },
+            {"fall", new DevConsoleCommand("fall", "make all objects fall", Fall, "2D|3D") }
         };
 
         private static string Quit(string[] Parameters)
@@ -314,7 +328,7 @@ namespace Btools.DevConsole
 
         private static string SetParent(string[] Parameters)
         {
-            GameObject target = GameObjectUtils.FindPath(Parameters[1].SplitEscaped('/'));
+            GameObject target = GameObjectUtils.FindPath(Parameters[1]);
             if (Parameters[2] == "null")
             {
                 target.transform.parent = null;
@@ -487,9 +501,11 @@ namespace Btools.DevConsole
         private static string History(string[] Parameters)
         {
             string s = "command history:\n";
-            for (int i = 0; i < DevCommands.History.Count; i++)
+
+            var history = DevCommands.History;
+            for (int i = 0; i < history.Length; i++)
             {
-                s += DevCommands.History[i] + "\n";
+                s += history[i] + "\n";
             }
             s += "END OF HISTORY";
             return s;
@@ -499,6 +515,225 @@ namespace Btools.DevConsole
         {
             UnityEngine.Rendering.SplashScreen.Begin();
             return "";
+        }
+
+        private static string Bind(string[] Parameters)
+        {
+            DevKeyBind devKeyBind = new GameObject($"bind for {Parameters[1]}").AddComponent<DevKeyBind>();
+            devKeyBind.key = (KeyCode)Enum.Parse(typeof(KeyCode), Parameters[1]);
+            devKeyBind.type = Parameters[2].ToLower() switch
+            {
+                "held" => DevKeyBind.Type.Held,
+                "heldfixedupdate" => DevKeyBind.Type.HeldFixedUpdate,
+                "down" => DevKeyBind.Type.Down,
+                "up" => DevKeyBind.Type.Up,
+                _ => DevKeyBind.Type.Held,
+            };
+            devKeyBind.Command = Parameters[3];
+
+            return devKeyBind.name;
+        }
+
+        private static string Unbind(string[] Parameters)
+        {
+            KeyCode keyToRemove = (KeyCode)Enum.Parse(typeof(KeyCode), Parameters[1]);
+
+            for (int i = 0; i < DevKeyBind.Instances.Count; i++)
+            {
+                if (DevKeyBind.Instances[i].Item1 == keyToRemove)
+                {
+                    DevKeyBind.Instances[i].Item2.Unbind();
+                    DevKeyBind.Instances.RemoveAt(i);
+                    i--;
+                }
+            }
+
+            return "unbinded all instances of " + keyToRemove.ToString();
+        }
+
+        private static string Update(string[] Parameters)
+        {
+            var update = new GameObject($"Registration to {Parameters[1]}").AddComponent<DevUpdateOrFixed>();
+            update.type = Parameters[1].ToLower() switch
+            {
+                "awake" => DevUpdateOrFixed.Type.Awake,
+                "start" => DevUpdateOrFixed.Type.Start,
+                "update" => DevUpdateOrFixed.Type.Update,
+                "fixed" => DevUpdateOrFixed.Type.FixedUpdate,
+                _ => DevUpdateOrFixed.Type.Awake,
+            };
+            update.Command = Parameters[2];
+
+            if (update.type == DevUpdateOrFixed.Type.Awake)
+                Debug.Log(DevCommands.Execute(update.Command));
+            return update.name;
+        }
+
+        private static string UnregisterUpdates(string[] Parameters)
+        {
+            while (DevUpdateOrFixed.Instances.Count > 0)
+            {
+                DevUpdateOrFixed.Instances[0].Unbind();
+                DevUpdateOrFixed.Instances.RemoveAt(0);
+            }
+            return "cleared";
+        }
+
+        private static string If(string[] Parameters)
+        {
+            if (Parameters[1].ToLower() == "true")
+                return DevCommands.Execute(Parameters[2]);
+            else if (Parameters.Length > 3)
+                return DevCommands.Execute(Parameters[3]);
+            return "";
+        }
+
+        private static string Delay(string[] Parameters)
+        {
+            utils.EmptyMonoBehaviour.EmptyMonobehaviour.StartCoroutine(DelayEnumerator(Parameters));
+            return "";
+        }
+
+        private static System.Collections.IEnumerator DelayEnumerator(string[] Parameters)
+        {
+            switch (Parameters[2].ToLower())
+            {
+                case "seconds":
+                default:
+                    yield return new WaitForSeconds(float.Parse(Parameters[1]));
+                    break;
+                case "real_time":
+                    yield return new WaitForSecondsRealtime(float.Parse(Parameters[1]));
+                    break;
+                case "frames":
+                    yield return new WaitForFrames(int.Parse(Parameters[1]));
+                    break;
+            }
+
+            Debug.Log(DevCommands.Execute(Parameters[3]));
+            yield break;
+        }
+
+        private static string Set(string[] Parameters)
+        {
+            DevCommands.Variables[Parameters[1]].Set(Parameters[2]);
+            return DevCommands.Variables[Parameters[1]].Get().ToString();
+        }
+
+        private static string Get(string[] Parameters)
+        {
+            return DevCommands.Variables[Parameters[1]].Get().ToString();
+        }
+
+        private static string Run(string[] Parameters)
+        {
+            string callback = "";
+            for (int i = 1; i < Parameters.Length; i++)
+            {
+                callback += "\n" + DevCommands.Execute(Parameters[1]);
+            }
+            return callback.Substring(1);
+        }
+
+        private static string NewCommand(string[] Parameters)
+        {
+            string[] commandParams = new string[Parameters.Length - 4];
+
+            for (int i = 4; i < Parameters.Length; i++)
+                commandParams[i - 4] = Parameters[i];
+
+            DevCommands.Register(Parameters[1], Parameters[2], x => DevCommands.Execute(Parameters[3]), commandParams);
+            return DevCommands.Commands[Parameters[1].ToLower()].ToString();
+        }
+
+        private static string RemoveCommand(string[] Parameters)
+        {
+            DevCommands.Commands.Remove(Parameters[1]);
+
+            if (Parameters[1] == "!ALL!")
+                DevCommands.Commands.Clear();
+
+            return "Removed command " + Parameters[1];
+        }
+
+        private static string RemoveVariable(string[] Parameters)
+        {
+            DevCommands.Variables.Remove(Parameters[1]);
+
+            if (Parameters[1] == "!ALL!")
+                DevCommands.Variables.Clear();
+
+            return "Removed variable " + Parameters[1];
+        }
+
+        private static string Fall(string[] Parameters)
+        {
+            Transform[] allGameObjects = GameObject.FindObjectsOfType<Transform>();
+            bool TwoDimensions = true;
+            if (Parameters.Length > 1)
+                TwoDimensions = Parameters[1] != "3D";
+
+            float lowestYlevel = 0;
+            for (int i = 0; i < allGameObjects.Length; i++)
+            {
+                if (TwoDimensions)
+                {
+                    var attatchedRigidBody2D = allGameObjects[i].GetComponent<Rigidbody2D>();
+
+                    if (attatchedRigidBody2D)
+                        MonoBehaviour.Destroy(attatchedRigidBody2D);
+
+                    allGameObjects[i].gameObject.AddComponent<Rigidbody2D>();
+
+                    if (allGameObjects[i].position.y < lowestYlevel)
+                        lowestYlevel = allGameObjects[i].position.y;
+
+                    var attatchedCollision2D = allGameObjects[i].GetComponent<Collider2D>();
+                    if (attatchedCollision2D)
+                    {
+                        if (attatchedCollision2D.isTrigger)
+                            attatchedCollision2D.isTrigger = false;
+                    }
+                    else
+                        allGameObjects[i].gameObject.AddComponent<BoxCollider2D>();
+
+                    continue;
+                }
+
+                var attatchedRigidBody = allGameObjects[i].GetComponent<Rigidbody>();
+                if (attatchedRigidBody)
+                    MonoBehaviour.Destroy(attatchedRigidBody);
+
+                allGameObjects[i].gameObject.AddComponent<Rigidbody>();
+                if (attatchedRigidBody.position.y < lowestYlevel)
+                    lowestYlevel = attatchedRigidBody.position.y;
+
+                var attatchedCollision = allGameObjects[i].GetComponent<Collider>();
+                if (attatchedCollision)
+                {
+                    if (attatchedCollision.isTrigger)
+                        attatchedCollision.isTrigger = false;
+                }
+                else
+                    allGameObjects[i].gameObject.AddComponent<BoxCollider>();
+            }
+
+            if (TwoDimensions)
+            {
+                var stoppper = new GameObject("Stopper", typeof(StayAtPosition));
+                stoppper.transform.position = new Vector3(0, lowestYlevel - 10);
+                stoppper.transform.localScale = new Vector3(1000, 1);
+                stoppper.AddComponent<BoxCollider2D>();
+            }
+            else
+            {
+                var stoppper = new GameObject("Stopper", typeof(StayAtPosition));
+                stoppper.transform.position = new Vector3(0, lowestYlevel - 10, 0);
+                stoppper.transform.localScale = new Vector3(1000, 1, 1000);
+                stoppper.AddComponent<BoxCollider>();
+            }
+
+            return "deleted rigidbodies";
         }
 
         private enum MemberType : byte

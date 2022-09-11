@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Btools
+namespace Btools.utils
 {
-    public class GameObjectUtils
+    public static class GameObjectUtils
     {
         private static Scene? _dontdestroyonload;
         public static Scene DontDestroyOnLoadScene
@@ -19,6 +19,12 @@ namespace Btools
                 return _dontdestroyonload.Value;
             }
         }
+
+        public static GameObject FindPath(string path)
+        {
+            return FindPath(path.Split('/'));
+        }
+
         public static GameObject FindPath(params string[] path)
         {
             if (TryFindPath(out GameObject value, path))
@@ -57,7 +63,6 @@ namespace Btools
                 if (rootObjects[i].name == path[1])
                 {
                     current = rootObjects[i].transform;
-                    Debug.Log(current.name);
                     break;
                 }
 
@@ -80,11 +85,35 @@ namespace Btools
                 }
 
                 if (!found)
+                {
+                    if (i == path.Length - 1 && path[i] == "")
+                        break;
                     return false;
+                }
             }
 
             gameObject = current.gameObject;
             return true;
+        }
+
+        public static string GetGameObjectPath(this GameObject gameObject)
+        {
+            return gameObject.transform.GetGameObjectPath();
+        }
+
+        public static string GetGameObjectPath(this Transform transform)
+        {
+            string path = "";
+            Transform current = transform;
+
+            while (current)
+            {
+                path = current.name + "/" + path;
+                current = current.parent;
+            }
+
+            path = transform.gameObject.scene.name + "/" + path;
+            return path;
         }
     }
 }

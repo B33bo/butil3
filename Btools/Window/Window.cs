@@ -5,7 +5,6 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 using UnityEditor;
-using Btools.numerics;
 using Btools.utils;
 
 namespace Btools.Components
@@ -75,7 +74,7 @@ namespace Btools.Components
             }
         }
 
-        void Awake()
+        private void Awake()
         {
             rectTransform = GetComponent<RectTransform>();
             canvas = GetComponentInParent<Canvas>();
@@ -112,29 +111,26 @@ namespace Btools.Components
 
         public void Resize(PointerEventData eventData)
         {
-            Vector2 scaleMouseDisplacement = eventData.delta;
-            Vector2 positionMouseDisplacement = eventData.delta / canvas.scaleFactor;
+            if (IsFullscreen)
+                return;
+            Vector2 movement = eventData.delta;
+            movement.y *= -1;
 
-            scaleMouseDisplacement.y = -eventData.delta.y;
-
-            rectTransform.sizeDelta += scaleMouseDisplacement;
-
-            Vector3 clampedPos = Clamp(rectTransform.sizeDelta, new Vector3(25, 40),
-                new Vector3(Screen.width, Screen.height) / canvas.scaleFactor);
-
-            if (clampedPos == (Vector3)rectTransform.sizeDelta)
-                rectTransform.position += (Vector3)positionMouseDisplacement / 2;
-
-            else
-                rectTransform.sizeDelta = clampedPos;
-        }
-
-        private Vector3 Clamp(Vector3 current, Vector3 min, Vector3 max) =>
-            new Vector3
+            if (rectTransform.sizeDelta.x <= 0 && movement.x < 0)
             {
-                x = Mathf.Clamp(current.x, min.x, max.x),
-                y = Mathf.Clamp(current.y, min.x, max.y),
-            };
+                movement.x = 0;
+                rectTransform.sizeDelta = new Vector2(0, rectTransform.sizeDelta.y);
+            }
+            if (rectTransform.sizeDelta.y <= 0 && movement.y < 0)
+            {
+                movement.y = 0;
+                rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, 0);
+            }
+
+            rectTransform.sizeDelta += movement / canvas.scaleFactor / 2;
+            rectTransform.anchoredPosition -= new Vector2(-movement.x, movement.y) / canvas.scaleFactor / 2;
+
+        }
 
         public void ResetColour()
         {
